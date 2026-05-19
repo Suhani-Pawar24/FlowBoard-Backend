@@ -1,0 +1,139 @@
+server:
+  port: 8080
+
+spring:
+  jmx:
+    enabled: true
+  application:
+    name: api-gateway
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            scope:
+              - email
+              - profile
+
+  cloud:
+    gateway:
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins:
+              - "http://localhost"
+              - "http://localhost:80"
+              - "http://localhost:5173"
+              - "http://localhost:5174"
+              - "http://localhost:5175"
+              - "http://localhost:5176"
+              - "http://localhost:3000"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+              - PATCH
+            allowedHeaders: "*"
+            allowCredentials: true
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_FIRST
+      discovery:
+        locator:
+          enabled: false
+          lower-case-service-id: true
+      routes:
+        - id: user-service-legacy
+          uri: lb://auth-service
+          predicates:
+            - Path=/user-service/**
+          filters:
+            - RewritePath=/user-service/(?<segment>.*), /auth/$\{segment}
+        - id: user-service
+          uri: lb://auth-service
+          predicates:
+            - Path=/auth/**, /admin/users/**, /admin/users/actions/**, /admin/analytics/**, /admin/audit-logs/**, /admin/overdue-cards/**, /admin/notifications/**
+        - id: user-service-profile
+          uri: lb://auth-service
+          predicates:
+            - Path=/user/**
+        - id: notification-service
+          uri: lb://notification-service
+          predicates:
+            - Path=/notifications/**
+        - id: user-service-swagger
+          uri: lb://auth-service
+          predicates:
+            - Path=/v3/api-docs/**, /swagger-ui/**, /swagger-ui.html
+        - id: workspace-service
+          uri: lb://workspace-service
+          predicates:
+            - Path=/workspaces/**
+        - id: board-service
+          uri: lb://board-service
+          predicates:
+            - Path=/boards/**
+        - id: list-service
+          uri: lb://list-service
+          predicates:
+            - Path=/lists/**
+        - id: label-service
+          uri: lb://label-service
+          predicates:
+            - Path=/labels/**, /checklists/**, /cards/*/labels/**, /cards/*/checklists/**
+        - id: card-service
+          uri: lb://card-service
+          predicates:
+            - Path=/cards/**
+        - id: comment-service
+          uri: lb://comment-service
+          predicates:
+            - Path=/comments/**, /attachments/**
+        - id: payment-service
+          uri: lb://payment-service
+          predicates:
+            - Path=/payments/**
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka
+    fetch-registry: true
+    register-with-eureka: true
+  instance:
+    hostname: ${EUREKA_INSTANCE_HOSTNAME:localhost}
+    prefer-ip-address: ${EUREKA_INSTANCE_PREFER_IP_ADDRESS:false}
+    instance-id: ${eureka.instance.hostname}:${spring.application.name}:${server.port}
+
+jwt:
+  secret: ${JWT_SECRET}
+  expiration: 86400000
+
+# URLs used by OAuth2SuccessHandler
+frontend:
+  url: ${FRONTEND_URL:http://localhost:5173}
+
+user:
+  service:
+    url: ${USER_SERVICE_URL:http://user-service:8081}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+    jmx:
+      exposure:
+        include: '*'
+  endpoint:
+    health:
+      show-details: always
+    gateway:
+      enabled: true
+  info:
+    env:
+      enabled: true
+
+
